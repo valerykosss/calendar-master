@@ -1,11 +1,3 @@
-
-<?php
-//index.php
-
-
-
-
-?>
 <!DOCTYPE html>
 <html>
  <head>
@@ -19,13 +11,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
-
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/locale/ru.js"></script> -->
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/locale/ru.js"></script>
 
   <script>
-   
   $(document).ready(function() {
 
     // Загрузка списка мастеров при загрузке страницы
@@ -66,6 +54,33 @@
     locale: 'ru', // Устанавливаем русский язык
     timeFormat: 'HH:mm',
 
+    viewRender: function(view) {
+        // Обновление времени внутри span для строк без класса "fc-minor"
+        $('span').each(function() {
+            var time = $(this).text();
+            if ($(this).closest('td').hasClass('fc-time')) {
+                $(this).text(time + ':00');
+            }
+        });
+    },
+
+    eventRender: function(event, element) {
+    // Отправка AJAX-запроса для получения master_name
+    $.ajax({
+        url: 'getMasterName.php',
+        type: 'POST',
+        data: { id_master: event.id_master },
+        dataType: 'json',
+        success: function(response) {
+            // Вставка полученного master_name в <span class="event-title">
+            element.find('.fc-content').prepend('<span class="event-title">' + response.master_name + ' ' + '</span>');
+        },
+        error: function(error) {
+            console.error('Ошибка при получении master_name:', error);
+        }
+    });
+},
+
     select: function(start, end, allDay)
     {
          // Заполнение полей модального окна значениями
@@ -95,6 +110,7 @@
       }
      })
     },
+
 
     //изменение границ события - перетаскивание события
     eventDrop:function(event)
@@ -251,6 +267,11 @@
   
  </head>
  <body>
+    <style>
+        .fc-center{
+            text-transform: capitalize;
+        }
+    </style>
   <div class="container">
    <div id="calendar"></div>
   </div>
