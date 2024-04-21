@@ -13,54 +13,82 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.css" rel="stylesheet" type="text/css" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.8.0/css/bootstrap-datepicker.min.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" />
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
   <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/locale/ru.js"></script> -->
 
 
   <script>
    
   $(document).ready(function() {
+
+    // Загрузка списка мастеров при загрузке страницы
+    loadMasters();
+
+    function loadMasters() {
+        $.ajax({
+            url: 'getMasters.php',  // PHP-скрипт для загрузки мастеров
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                // $('#master_select').empty();  // Очищаем выпадающий список
+
+                $.each(response, function(index, master) {
+                    $('#master_select').append($('<option>', {
+                        value: master.id,
+                        text: master.name
+                    }));
+                });
+            },
+            error: function(error) {
+                console.error('Ошибка при загрузке мастеров:', error);
+            }
+        });
+    }
+
    var calendar = $('#calendar').fullCalendar({
     editable:true,
     header:{
      left:'prev,next today',
      center:'title',
-     right:'month,agendaWeek,agendaDay'
+     right:'agendaWeek, month'
     },
     events: 'load.php',
     selectable:true,
+    defaultView: 'agendaWeek',
     selectHelper:true,
+    locale: 'ru', // Устанавливаем русский язык
+    timeFormat: 'HH:mm',
 
     select: function(start, end, allDay)
     {
          // Заполнение полей модального окна значениями
         clearLeaveModal();
         $('#leaveModal').modal('show');  
-        $('#leave_start').val($.fullCalendar.formatDate(start, "Y-MM-DD HH:mm"));
-        $('#leave_end').val($.fullCalendar.formatDate(end, "Y-MM-DD HH:mm:ss"));
+        $('#leave_start').val($.fullCalendar.formatDate(start, "YYYY-MM-DD HH:mm"));
+        $('#leave_end').val($.fullCalendar.formatDate(end, "YYYY-MM-DD HH:mm"));
 
     },
     editable:true,
 
-    //растягивание события
+    //растягивание события вниз
     eventResize:function(event)
     {
-     var start = $.fullCalendar.formatDate(event.start, "Y-MM-DD HH:mm:ss");
-     var end = $.fullCalendar.formatDate(event.end, "Y-MM-DD HH:mm:ss");
-     var title = event.title;
+     var start = $.fullCalendar.formatDate(event.start, "YYYY-MM-DD HH:mm");
+     var end = $.fullCalendar.formatDate(event.end, "YYYY-MM-DD HH:mm");
+     var id_master = event.id_master;
      var id = event.id;
 
      $.ajax({
       url:"update.php",
       type:"POST",
-      data:{title:title, start:start, end:end, id:id},
+      data:{ id_master:id_master, start:start, end:end, id:id},
       success:function(){
        calendar.fullCalendar('refetchEvents');
        $("#msgUpdatedModal").modal();
@@ -71,14 +99,14 @@
     //изменение границ события - перетаскивание события
     eventDrop:function(event)
     {
-     var start = $.fullCalendar.formatDate(event.start, "Y-MM-DD HH:mm:ss");
-     var end = $.fullCalendar.formatDate(event.end, "Y-MM-DD HH:mm:ss");
-     var title = event.title;
+     var start = $.fullCalendar.formatDate(event.start, "YYYY-MM-DD HH:mm");
+     var end = $.fullCalendar.formatDate(event.end, "YYYY-MM-DD HH:mm");
+     var id_master = event.id_master;
      var id = event.id;
      $.ajax({
       url:"update.php",
       type:"POST",
-      data:{title:title, start:start, end:end, id:id},
+      data:{id_master:id_master, start:start, end:end, id:id},
       error: function(error){
             alert('Something went wrong: ', error);
         },
@@ -93,7 +121,8 @@
     //обработчик нажатия
     eventClick:function(event)
     {
-    var id = event.id;
+        // $('#eventIdInput').val(event.id);
+        var id = event.id;
 
             $.ajax ({
                 //вывод
@@ -106,7 +135,7 @@
                 success:function() {
                     calendar.fullCalendar('refetchEvents');
                     
-                    $('#leave_title_edit').val(event.title);
+                    $('#master_select').val(event.id_master);
 
                     $('#leave_start').val($.fullCalendar.formatDate(event.start, "YYYY-MM-DD HH:mm"));
                     $('#leave_end').val($.fullCalendar.formatDate(event.end, "YYYY-MM-DD HH:mm"));
@@ -125,16 +154,24 @@
 
               // update по кнопке
             $('#leaveUpdateBtn').click(function(){
+                // var id = $('#eventIdInput').val(); // Получение id события из скрытого поля ввода
 
-                title=$('#leave_title_edit').val();
+                // $('#master_select').val(event.id_master);
+
+                id_master=$('#master_select').val();
+                alert("АЙДИ МАСТЕРА ". id_master);
+
                 start = moment($('#leave_start').val()).format('YYYY-MM-DD HH:mm');
                 end = moment($('#leave_end').val()).format('YYYY-MM-DD HH:mm');
-
+                
+                // alert("АЙДИ ". id);
+                
+                // var id = $('#eventIdInput').val();
 
                 $.ajax({
                     url:"update.php",
                     type:"POST",
-                    data: {title:title, start:start, end:end, id:id },
+                    data: {id_master:id_master, start:start, end:end, id:id },
                     error: function(error){
                             alert('Something went wrong: ', error);
                         },
@@ -173,7 +210,7 @@
    function clearLeaveModal() {
         $('#leaveModal').find('input').val("");
     
-        $("#leave_title").text("Add a New Schedule");
+        $("#leave_title").text("Расписание");
 
         // format modal buttons
         $('#leaveAddBtn').attr('disabled', false);
@@ -185,17 +222,18 @@
     };
     // add button function
     $('#leaveAddBtn').click(function(){
-        title=$('#leave_title_edit').val();
+        id_master=$('#master_select').val();
         start = $('#leave_start').val();
         end = $('#leave_end').val();
+
    
        $.ajax({
            url:'insert.php',
            type:'POST',
            data:{
-            title:title,
-            start:start,
-            end:end
+            id_master: id_master,
+            start: start,
+            end: end
            },
            error: function(error){
                alert('Something went wrong: ', error);
@@ -206,8 +244,8 @@
                clearLeaveModal();
            }
        });
-       
    });
+
   });
   </script>
   
@@ -223,14 +261,14 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h4 id="leave_title" class="modal-title"></h4>
-                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">close</span></button>
+                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">Закрыть</span></button>
                 </div>  
                 <div class="modal-body">
                     <form>  
-                        <div class="form-group">
+                        <!-- <div class="form-group">
                             <label for="start" class="col-form-label">Title: </label>
                             <input type="text" class="form-control" id="leave_title_edit">
-                        </div>
+                        </div> -->
 
                         <!-- <div class="form-group">
                             <label for="start" class="col-form-label">Description: </label>
@@ -238,21 +276,28 @@
                         </div>-->
 
                         <div class="form-group">
-                            <label for="start" class="col-form-label">Start: </label>
+                            <label for="master_select" class="col-form-label">Мастер: </label>
+                            <select class="form-control" id="master_select">
+                            </select>
+                        </div>
+                        <input type="hidden" id="eventIdInput">
+
+                        <div class="form-group">
+                            <label for="start" class="col-form-label">Начало времени работы: </label>
                             <input type="text" class="form-control" id="leave_start">
                         </div>
 
                         <div class="form-group">
-                            <label for="start" class="col-form-label">End: </label>
+                            <label for="start" class="col-form-label">Конец времени работы: </label>
                             <input type="text" class="form-control" id="leave_end">
                         </div>
                     </form>
                 </div>  
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal" id="leaveAddBtn">Add</button>
-                    <button type="button" class="btn btn-warning" data-dismiss="modal" id="leaveUpdateBtn">Update</button>
-                    <button type="button" class="btn btn-danger" data-dismiss="modal" id="leaveDeleteBtn">Delete</button>
-                    <button type="button" class="btn btn-info" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" id="leaveAddBtn">Добавить</button>
+                    <!-- <button type="button" class="btn btn-warning" data-dismiss="modal" id="leaveUpdateBtn">Update</button> -->
+                    <button type="button" class="btn btn-danger" data-dismiss="modal" id="leaveDeleteBtn">Удалить</button>
+                    <button type="button" class="btn btn-info" data-dismiss="modal">Отмена</button>
                 </div>
             </div>
         </div>
@@ -264,11 +309,11 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Success!</h4>
-                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">close</span></button>
+                    <h4 class="modal-title">Успешно!</h4>
+                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">Закрыть</span></button>
                 </div>
                 <div class="modal-body">
-                    <p>The leave event has been successfully added to the calendar.</p>
+                    <p>Расписание было успешно добавлено!</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-info" data-dismiss="modal">Close</button>
@@ -283,14 +328,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Updated!</h4>
+                    <h4 class="modal-title">Расписание обновлено!</h4>
                     <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">close</span></button>
                 </div>
                 <div class="modal-body">
-                    <p>The leave event has been successfully updated on the calendar.</p>
+                    <p>Расписание было успешно обновлено!</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-info" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-info" data-dismiss="modal">Закрыть</button>
                 </div>
             </div>
         </div>
@@ -302,14 +347,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Deleted!</h4>
-                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">close</span></button>
+                    <h4 class="modal-title">Расписание удалено!</h4>
+                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span> <span class="sr-only">Закрыть</span></button>
                 </div>
                 <div class="modal-body">
-                    <p>The leave event has been successfully deleted from the calendar.</p>
+                    <p>Расписание было успешно удалено!</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-info" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-info" data-dismiss="modal">Закрыть</button>
                 </div>
             </div>
         </div>

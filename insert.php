@@ -4,22 +4,23 @@
 
 $connect = new PDO('mysql:host=localhost;dbname=lotos', 'root', 'root');
 
-if(isset($_POST["title"]))
-{
  $query = "
- INSERT INTO events 
- (title, start_event, end_event) 
- VALUES (:title, :start_event, :end_event)
+ INSERT INTO master_timetable 
+ (id_master, start, end) 
+ VALUES (:id_master, :start, :end)
  ";
  $statement = $connect->prepare($query);
  $statement->execute(
   array(
-   ':title'  => $_POST['title'],
-   ':start_event' => $_POST['start'],
-   ':end_event' => $_POST['end']
+   ':id_master'  => $_POST['id_master'],
+   ':start' => $_POST['start'],
+   ':end' => $_POST['end']
   )
  );
-}
+
+ echo $_POST['id_master'];
+ echo $_POST['start'];
+ echo $_POST['end'];
 
 
 ?>
