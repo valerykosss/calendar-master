@@ -6,7 +6,7 @@ $connect = new PDO('mysql:host=localhost;dbname=lotos', 'root', 'root');
 
 $data = array();
 
-$query = "SELECT * FROM test ORDER BY id";
+$query = "SELECT * FROM events ORDER BY id";
 
 $statement = $connect->prepare($query);
 
@@ -19,9 +19,8 @@ foreach($result as $row)
  $data[] = array(
   'id'   => $row["id"],
   'title'   => $row["title"],
-  'description' => $row["description"],
-  'start' => $row["start"],
-  'end' => $row["end"]
+  'start'   => $row["start_event"],
+  'end'   => $row["end_event"]
  );
 }
 
